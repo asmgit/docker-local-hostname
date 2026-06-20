@@ -158,7 +158,21 @@ Short version (full version in [SPEC.md](SPEC.md)):
 | macvlan | The clean Linux answer; on Docker Desktop `parent=eth0` is the VM, not your LAN — doesn't expose containers. |
 | **docker-mac-net-connect + /etc/hosts (this)** | Each container gets a reachable IP; names map to IPs in `/etc/hosts`; ports are free to repeat. |
 
-## Credits
+## Related projects
 
-Built on [`docker-mac-net-connect`](https://github.com/chipmk/docker-mac-net-connect)
-by chipmk (the WireGuard host↔container tunnel). MIT licensed.
+Other tools solve part of this. The hard part `docker-local-hostname` adds is
+reaching **databases** by name on a shared port from macOS Docker Desktop.
+
+| Project | What it does | Where it stops (for this use case) |
+|---|---|---|
+| [docker-mac-net-connect](https://github.com/chipmk/docker-mac-net-connect) | WireGuard tunnel that makes container IPs reachable from the Mac — **this project builds on it**. | Reachability only; no name resolution. |
+| [Portless](https://github.com/vercel-labs/portless) ([portless.sh](https://portless.sh)) | Stable `*.localhost` URLs via an HTTPS reverse proxy with auto-assigned ports. | **HTTP/HTTPS only** — not databases/TCP. |
+| [dockportless](https://github.com/mazrean/dockportless) | Portless-style for any Compose tool; pretty URLs on one port with TLS-SNI routing. | TCP only via **TLS-SNI**; standard `psql`/`mysql` (STARTTLS) still don't route by name. |
+| [docker-hoster](https://github.com/dvddarias/docker-hoster) | Keeps `/etc/hosts` in sync with container names via docker events — **the same core idea**. | Runs as a container, so on Docker Desktop it can't reach `172.x` IPs or flush the macOS DNS cache. |
+| Reverse proxy (Traefik / nginx-proxy) | Routes HTTP by the `Host` header. | Can't route databases by name (no hostname in the raw TCP stream). |
+
+## Credits & references
+
+- [**docker-mac-net-connect**](https://github.com/chipmk/docker-mac-net-connect) by chipmk — the WireGuard host↔container tunnel this builds on (MIT).
+- The **`/etc/hosts`-from-docker-events** approach is prior art: this [Stack Overflow answer](https://stackoverflow.com/a/63656003) (bash + docker events) and [docker-hoster](https://github.com/dvddarias/docker-hoster). `docker-local-hostname` pairs the idea with the tunnel **and a host-side DNS flush** so it works for **databases** on macOS, not just HTTP.
+- Pretty local-URL inspiration: [Portless](https://github.com/vercel-labs/portless).

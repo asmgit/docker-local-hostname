@@ -175,3 +175,22 @@ daemon in this repo remains the zero-build, easy-to-audit default.
 | DNS server forwarding unknown `.ldev` upstream | ~77 s (then stuck pending flush) | root SOA negative TTL 86400 |
 | DNS server made authoritative (`remote: off`) | ~30 s | macOS default negative cache, plus a dead resolver still in the chain |
 | **`/etc/hosts` + flush-on-change (this repo)** | **~1 s** | hosts file beats DNS, no negative caching |
+
+## 10. Prior art & alternatives
+
+The individual pieces are not novel; the contribution is the **combination for
+macOS Docker Desktop that works for databases**, not just HTTP.
+
+- **`docker-mac-net-connect`** (chipmk) — the WireGuard host↔container tunnel this
+  builds on: <https://github.com/chipmk/docker-mac-net-connect>
+- **`/etc/hosts` from docker events** — established prior art for the sync idea:
+  - Stack Overflow answer <https://stackoverflow.com/a/63656003> — a bash script that
+    updates `/etc/hosts` on docker events (the host-file approach this repo uses).
+  - [`docker-hoster`](https://github.com/dvddarias/docker-hoster) — the same idea as a
+    container. On Docker Desktop it can't reach `172.x` IPs or flush the macOS DNS
+    cache (it runs inside a container) — which is exactly what the host-side daemon +
+    tunnel pairing here fixes.
+- **HTTP-only name routing** — [Portless](https://github.com/vercel-labs/portless)
+  and [dockportless](https://github.com/mazrean/dockportless). Excellent for web
+  URLs; databases would need TLS-SNI (dockportless) or aren't covered (Portless), so
+  standard `psql`/`mysql` don't route by name — see §3.2 for why no proxy can.
