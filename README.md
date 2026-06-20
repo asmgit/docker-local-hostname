@@ -9,8 +9,8 @@ collide. Install once, then it just works.
 ```
 curl http://project_admin.ldev      ->  project_admin's web container
 psql -h db.project_admin.ldev       ->  project_admin's postgres
-curl http://project_mono.ldev      ->  project_mono's web container   (also on :80, no conflict)
-psql -h db.project_mono.ldev       ->  project_mono's postgres        (also on :5432, no conflict)
+curl http://project_mono.ldev       ->  project_mono's web container   (also on :80, no conflict)
+psql -h db.project_mono.ldev        ->  project_mono's postgres        (also on :5432, no conflict)
 ```
 
 ## The problem
@@ -23,28 +23,27 @@ can't be routed by name** — the MySQL/Postgres wire protocol carries no hostna
 (TLS/SNI only comes up *after* a plaintext greeting), so a proxy can't tell two
 databases apart on one `IP:port`. See [SPEC.md](SPEC.md) for the full analysis.
 
-`docker-local-hostname` takes a different route: give **each container its own IP**, reachable
-from the Mac, and resolve each project's hostname to its IP. No host ports, no reverse
-proxy, no per-project port bookkeeping. Routing is by **name → IP**, so ports are
-free to repeat. The domain is configurable (examples below use `.ldev`).
+`docker-local-hostname` takes a different route: give **each container its own IP**,
+reachable from the Mac, and resolve each project's hostname to its IP. No host
+ports, no reverse proxy, no per-project port bookkeeping. Routing is by
+**name → IP**, so ports are free to repeat. The domain is configurable (examples
+below use `.ldev`).
 
 ## How it works
 
+It's **one binary** (a fork of [docker-mac-net-connect](https://github.com/chipmk/docker-mac-net-connect)
+with a built-in `/etc/hosts` sync), run as a single root service:
+
 ```
  Mac:  curl http://project_admin.ldev
-   |  /etc/hosts:  project_admin.ldev -> 172.20.0.3   (kept in sync by the docker-local-hostname daemon)
+   |  /etc/hosts:  project_admin.ldev -> 172.20.0.3
    v
-   docker-mac-net-connect routes 172.x from the Mac into the Docker VM
+   docker-local-hostname (one root service):
+     • WireGuard tunnel       -> the Mac can reach container 172.x IPs
+     • watches docker events  -> writes the *.ldev hosts, flushes the DNS cache
    v
-   project_admin's web container  --(by service name 'db')-->  project_admin's db container
+   project_admin's web container  --(service name 'db')-->  project_admin's db container
 ```
-
-Two small pieces, both installed by `install.sh`:
-
-| Component | Role |
-|---|---|
-| [`docker-mac-net-connect`](https://github.com/chipmk/docker-mac-net-connect) | A WireGuard tunnel so the Mac can reach container IPs (`172.x`). Docker Desktop normally hides them. |
-| `docker-local-hostname` (this repo) | A tiny launchd daemon that watches Docker events and keeps a managed block in `/etc/hosts` mapping every `*.ldev` container hostname to its IP, flushing the DNS cache on change. |
 
 There is **no DNS server** and **no `/etc/resolver`**: `/etc/hosts` is consulted
 before DNS and isn't subject to negative-cache stalls, so a container that comes
@@ -52,20 +51,22 @@ back up resolves again in about a second.
 
 ## Requirements
 
-- macOS with **Docker Desktop**
-- **Homebrew** (for `docker-mac-net-connect`)
+macOS with **Docker Desktop**.
 
 ## Install
 
 ```bash
-git clone https://github.com/asmgit/docker-local-hostname.git
-cd docker-local-hostname
-./install.sh
+brew install asmgit/tap/docker-local-hostname
+sudo brew services start asmgit/tap/docker-local-hostname
 ```
 
-`install.sh` is idempotent. It installs and starts `docker-mac-net-connect`,
-installs the `docker-local-hostname` daemon, and asks for `sudo` (the daemon edits
-`/etc/hosts` and runs as root, which is required to flush the DNS cache).
+It runs as **root** (it creates the WireGuard tunnel and edits `/etc/hosts`).
+It **includes** the docker-mac-net-connect tunnel, so don't run both — if you have
+the upstream tunnel running, stop it first:
+
+```bash
+sudo brew services stop chipmk/tap/docker-mac-net-connect
+```
 
 ## Use it
 
@@ -91,13 +92,12 @@ docker compose -f examples/project_admin/compose.yaml up -d
 docker compose -f examples/project_mono/compose.yaml up -d
 
 curl http://project_admin.ldev          # -> project_admin web
-curl http://project_mono.ldev          # -> project_mono web   (also :80, no conflict)
+curl http://project_mono.ldev           # -> project_mono web   (also :80, no conflict)
 psql -h db.project_admin.ldev -U postgres
 psql -h db.project_mono.ldev -U postgres
 ```
 
-That's it — the daemon notices the containers and updates `/etc/hosts`. No IP
-is ever written into a project file; only the **name** lives in `compose.yaml`.
+No IP is ever written into a project file; only the **name** lives in `compose.yaml`.
 
 ### Add another project
 
@@ -107,56 +107,34 @@ keep the same internal ports, publish nothing. Nothing else to configure.
 ## Verify
 
 ```bash
-grep -A6 'BEGIN DOCKER_LOCAL_HOSTNAME' /etc/hosts     # the managed block
-cat /var/log/docker-local-hostname.log          # daemon activity
+grep -A6 'BEGIN DOCKER_LOCAL_HOSTNAME' /etc/hosts   # the managed block
+sudo brew services list                             # service running?
+tail /opt/homebrew/var/log/docker-local-hostname.log
 ```
 
 ## Configuration
 
-The domain defaults to `.ldev`. To use another (e.g. `.test`):
-
-```bash
-DOCKER_LOCAL_HOSTNAME_DOMAIN=.test ./install.sh
-```
-
-## Troubleshooting
-
-- **A name doesn't resolve / `curl: could not resolve host`.** Check the block
-  in `/etc/hosts` and `/var/log/docker-local-hostname.log`. Make sure the container's
-  `hostname` actually ends in your domain.
-- **Name resolves but the connection hangs/refuses.** That's the tunnel, not
-  DNS. Confirm `docker-mac-net-connect` is running:
-  `sudo brew services list | grep docker-mac-net-connect`, and that
-  `curl http://<container-ip>` works.
-- **Nothing updates after `up`.** Restart the daemon:
-  `sudo launchctl kickstart -k system/com.docker.local-hostname`.
+The domain defaults to `.ldev`, configurable via the `DOCKER_LOCAL_HOSTNAME_DOMAIN`
+environment variable in the service plist
+(`/Library/LaunchDaemons/homebrew.mxcl.docker-local-hostname.plist`) — edit it and
+`sudo brew services restart asmgit/tap/docker-local-hostname`. Use a domain the OS
+doesn't special-case (`.ldev`/`.test` are fine; **not** `.local`, which is mDNS).
 
 ## Uninstall
 
 ```bash
-./uninstall.sh
-# and, if you also want the tunnel gone:
-brew uninstall docker-mac-net-connect
+sudo brew services stop asmgit/tap/docker-local-hostname
+brew uninstall asmgit/tap/docker-local-hostname
 ```
 
-## A more integrated option (single binary)
+## Source & build
 
-`docker-local-hostname` is intentionally a small shell daemon layered on top of the
-upstream tunnel. The same logic can be folded **into** `docker-mac-net-connect`
-so one binary does both the tunnel and the `/etc/hosts` sync — see
-[`fork/`](fork/) for that variant and the rationale.
+The binary is built from a fork of docker-mac-net-connect that adds a
+`hostsmanager` package (the `/etc/hosts` sync) — a small additive change hooked
+into `main` with one line.
 
-## Why not just …?
-
-Short version (full version in [SPEC.md](SPEC.md)):
-
-| Approach | Verdict on macOS |
-|---|---|
-| Different host ports per project | Works, but you manage a port map forever; not "same ports". |
-| Reverse proxy (Traefik) by name | Great for HTTP; **cannot** route databases by name (no hostname in the TCP/SNI stream). |
-| dnsmasq / custom DNS | Resolves names, but on Docker Desktop the container IPs it returns aren't reachable, and unknown names negative-cache. |
-| macvlan | The clean Linux answer; on Docker Desktop `parent=eth0` is the VM, not your LAN — doesn't expose containers. |
-| **docker-mac-net-connect + /etc/hosts (this)** | Each container gets a reachable IP; names map to IPs in `/etc/hosts`; ports are free to repeat. |
+- Source: <https://github.com/asmgit/docker-mac-net-connect/tree/docker-local-hostname>
+- Formula: <https://github.com/asmgit/homebrew-tap>
 
 ## Related projects
 

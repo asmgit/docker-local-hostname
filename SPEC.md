@@ -86,16 +86,16 @@ Two requirements force the shape:
 - "No host ports, names not addresses, fast updates" ⇒ resolve names to those
   IPs in a way that updates instantly and doesn't negative-cache.
 
-So:
+So **one binary** — a fork of
+[`docker-mac-net-connect`](https://github.com/chipmk/docker-mac-net-connect) run as
+a single root service — does both:
 
-1. **[`docker-mac-net-connect`](https://github.com/chipmk/docker-mac-net-connect)**
-   creates a WireGuard tunnel between the Mac and the Docker VM and adds routes
-   for the Docker subnets. Now the Mac can reach any container by its `172.x` IP
-   on any port. This removes constraint §2 (unreachable IPs). Each container
-   already has its own IP, so identical ports across projects never collide.
+1. **Tunnel.** It creates a WireGuard tunnel between the Mac and the Docker VM and
+   adds routes for the Docker subnets. Now the Mac can reach any container by its
+   `172.x` IP on any port. This removes constraint §2 (unreachable IPs). Each
+   container already has its own IP, so identical ports across projects never collide.
 
-2. **`docker-local-hostname`** (this repo) maps names to those IPs using **`/etc/hosts`**,
-   not DNS:
+2. **Name resolution via `/etc/hosts`** (not DNS):
    - It watches Docker `container` events over the API socket.
    - On any change it lists running containers, takes each one whose
      `Config.Hostname` ends in the domain (default `.ldev`), and writes
@@ -159,14 +159,21 @@ reads the container's `Config.Hostname` from the Docker API — so for `docker-l
 set `hostname:`. If you also want container-to-container resolution by the same
 `.ldev` name, add it as a network `alias` too.
 
-## 8. Optimization: fold it into one binary
+## 8. Implementation: a single binary, installed via Homebrew
 
 `docker-mac-net-connect` already runs as root, already holds a Docker client, and
-already watches Docker events. The natural simplification is to add the
-`/etc/hosts` sync **inside it**, so a single `brew install` + one service does
-everything. The [`fork/`](fork/) directory contains that integration (a small Go
-`hostsmanager` plus a hook in `main.go`) and notes on building it. The shell
-daemon in this repo remains the zero-build, easy-to-audit default.
+already watches Docker events, so the `/etc/hosts` sync is folded **into** it as a
+small additive `hostsmanager` package (one hook in `main`). The result is a single
+binary that does both the tunnel and the name sync, shipped as a Homebrew formula:
+
+```
+brew install asmgit/tap/docker-local-hostname
+sudo brew services start asmgit/tap/docker-local-hostname
+```
+
+Source (fork): <https://github.com/asmgit/docker-mac-net-connect/tree/docker-local-hostname>;
+formula: <https://github.com/asmgit/homebrew-tap>. Because the binary includes the
+tunnel, it replaces upstream `docker-mac-net-connect` — don't run both.
 
 ## 9. Lessons (measured)
 
