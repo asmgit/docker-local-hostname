@@ -1,0 +1,20 @@
+name: project_2
+
+# Identical internal ports to project_1 (web :80, db :5432) — they do not
+# conflict because nothing is published to the host; each name resolves to its
+# own container IP. Reached as http://project_2.ldev and db.project_2.ldev:5432
+services:
+  web:
+    image: traefik/whoami
+    hostname: project_2.ldev
+
+  db:
+    image: postgres:18-alpine
+    hostname: db.project_2.ldev
+    environment:
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - dbdata:/var/lib/postgresql
+
+volumes:
+  dbdata:
