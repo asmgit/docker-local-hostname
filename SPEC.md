@@ -171,9 +171,10 @@ brew install asmgit/tap/docker-local-hostname
 sudo brew services start asmgit/tap/docker-local-hostname
 ```
 
-Source (fork): <https://github.com/asmgit/docker-mac-net-connect/tree/docker-local-hostname>;
-formula: <https://github.com/asmgit/homebrew-tap>. Because the binary includes the
-tunnel, it replaces upstream `docker-mac-net-connect` — don't run both.
+The source lives in this repo (`main.go` + `hostsmanager/` + `networkmanager/` +
+`version/`); the formula is at <https://github.com/asmgit/homebrew-tap>. Because the
+binary includes the tunnel, it replaces upstream `docker-mac-net-connect` — don't
+run both.
 
 ## 9. Lessons (measured)
 

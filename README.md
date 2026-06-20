@@ -129,12 +129,18 @@ brew uninstall asmgit/tap/docker-local-hostname
 
 ## Source & build
 
-The binary is built from a fork of docker-mac-net-connect that adds a
-`hostsmanager` package (the `/etc/hosts` sync) — a small additive change hooked
-into `main` with one line.
+This repo **is** the source — a fork of
+[docker-mac-net-connect](https://github.com/chipmk/docker-mac-net-connect) (the
+WireGuard tunnel) plus a `hostsmanager` package that adds the `/etc/hosts` sync,
+hooked into `main` with one line. Layout: `main.go` (tunnel), `hostsmanager/`
+(the `/etc/hosts` sync), `networkmanager/`, `version/`.
 
-- Source: <https://github.com/asmgit/docker-mac-net-connect/tree/docker-local-hostname>
-- Formula: <https://github.com/asmgit/homebrew-tap>
+```bash
+make build      # -> ./docker-local-hostname
+```
+
+The Homebrew formula ([asmgit/homebrew-tap](https://github.com/asmgit/homebrew-tap))
+runs the same build.
 
 ## Related projects
 
