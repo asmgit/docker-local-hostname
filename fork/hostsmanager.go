@@ -1,7 +1,7 @@
 //go:build darwin
 
 // Package hostsmanager keeps a managed block in /etc/hosts in sync with running
-// docker containers whose hostname ends in the ldev domain (env LDEV_DOMAIN,
+// docker containers whose hostname ends in the docker-local-hostname domain (env DOCKER_LOCAL_HOSTNAME_DOMAIN,
 // default ".ldev"), mapping each hostname to its container IP. It flushes the
 // macOS DNS cache when the set changes so updates are visible within ~1s.
 //
@@ -28,12 +28,12 @@ import (
 
 const (
 	hostsPath   = "/etc/hosts"
-	beginMarker = "# BEGIN LDEV CONTAINERS"
-	endMarker   = "# END LDEV CONTAINERS"
+	beginMarker = "# BEGIN DOCKER-LOCAL-HOSTNAME"
+	endMarker   = "# END DOCKER-LOCAL-HOSTNAME"
 )
 
 func domain() string {
-	if d := os.Getenv("LDEV_DOMAIN"); d != "" {
+	if d := os.Getenv("DOCKER_LOCAL_HOSTNAME_DOMAIN"); d != "" {
 		return d
 	}
 	return ".ldev"
@@ -53,14 +53,14 @@ func Run(ctx context.Context, cli *client.Client) {
 			return
 		}
 		if err := writeBlock(entries); err != nil {
-			fmt.Fprintf(os.Stderr, "ldev-hosts: failed to write %s: %v\n", hostsPath, err)
+			fmt.Fprintf(os.Stderr, "docker-local-hostname: failed to write %s: %v\n", hostsPath, err)
 			return
 		}
 		joined := strings.Join(entries, "\n")
 		if joined != prev {
 			prev = joined
 			flushDNS()
-			fmt.Printf("ldev-hosts: %s set changed (%d entries); flushed DNS\n", dom, len(entries))
+			fmt.Printf("docker-local-hostname: %s set changed (%d entries); flushed DNS\n", dom, len(entries))
 		}
 	}
 

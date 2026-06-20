@@ -94,7 +94,7 @@ So:
    on any port. This removes constraint §2 (unreachable IPs). Each container
    already has its own IP, so identical ports across projects never collide.
 
-2. **`ldev-hosts`** (this repo) maps names to those IPs using **`/etc/hosts`**,
+2. **`docker-local-hostname`** (this repo) maps names to those IPs using **`/etc/hosts`**,
    not DNS:
    - It watches Docker `container` events over the API socket.
    - On any change it lists running containers, takes each one whose
@@ -111,7 +111,7 @@ Measured recovery after `down`/`up`: **~1 second**, with no manual flush.
 
 ```
 project_1.ldev
-  -> /etc/hosts        (ldev-hosts wrote: 172.20.0.3 project_1.ldev)
+  -> /etc/hosts        (docker-local-hostname wrote: 172.20.0.3 project_1.ldev)
   -> 172.20.0.3        (route via docker-mac-net-connect's utun)
   -> container :80 / :5432 / :3306
 ```
@@ -127,8 +127,8 @@ project_1.ldev
 ## 5. Design decisions & trade-offs
 
 - **`/etc/hosts` vs DNS.** `/etc/hosts` is authoritative, immediate, and immune
-  to negative caching. The cost is that it's a global system file — `ldev-hosts`
-  only ever touches its own `# BEGIN/END LDEV CONTAINERS` block and leaves all
+  to negative caching. The cost is that it's a global system file — `docker-local-hostname`
+  only ever touches its own `# BEGIN/END DOCKER-LOCAL-HOSTNAME` block and leaves all
   other lines untouched.
 - **Flush on change.** macOS's `mDNSResponder` does not always re-read
   `/etc/hosts` immediately; a flush guarantees ~1s pickup. It only fires when the
@@ -148,14 +148,14 @@ project_1.ldev
 Reaching these names from *other* machines needs the container subnet routed to
 your Mac (a static route on the router, plus IP forwarding) or a real per-project
 IP. On a typical ISP router that can't do static routes, this isn't practical;
-`ldev` targets the developer's own machine.
+`docker-local-hostname` targets the developer's own machine.
 
 ## 7. Note: hostname vs network alias
 
 Inside Docker, containers resolve each other by **service name**, **container
 name**, or **network alias** via the embedded DNS at `127.0.0.11`. They do *not*
-resolve each other by `hostname`. The host-side `ldev-hosts` daemon, however,
-reads the container's `Config.Hostname` from the Docker API — so for `ldev` you
+resolve each other by `hostname`. The host-side `docker-local-hostname` daemon, however,
+reads the container's `Config.Hostname` from the Docker API — so for `docker-local-hostname` you
 set `hostname:`. If you also want container-to-container resolution by the same
 `.ldev` name, add it as a network `alias` too.
 

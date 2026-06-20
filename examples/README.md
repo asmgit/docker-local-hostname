@@ -24,7 +24,7 @@ psql -h db.project_2.ldev -U postgres   # password: secret
 Check what the daemon wrote:
 
 ```bash
-grep -A6 'BEGIN LDEV' /etc/hosts
+grep -A6 'BEGIN DOCKER-LOCAL-HOSTNAME' /etc/hosts
 ```
 
 Tear down:

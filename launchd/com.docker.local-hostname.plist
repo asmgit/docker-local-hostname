@@ -3,14 +3,14 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.ldev.hosts</string>
+  <string>com.docker.local-hostname</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/local/bin/ldev-hosts</string>
+    <string>/usr/local/bin/docker-local-hostname</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>LDEV_DOMAIN</key>
+    <key>DOCKER_LOCAL_HOSTNAME_DOMAIN</key>
     <string>__DOMAIN__</string>
   </dict>
   <key>RunAtLoad</key>
@@ -18,8 +18,8 @@
   <key>KeepAlive</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>/var/log/ldev-hosts.log</string>
+  <string>/var/log/docker-local-hostname.log</string>
   <key>StandardErrorPath</key>
-  <string>/var/log/ldev-hosts.log</string>
+  <string>/var/log/docker-local-hostname.log</string>
 </dict>
 </plist>

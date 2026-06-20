@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Remove the ldev-hosts daemon and its /etc/hosts block. Leaves
+# Remove the docker-local-hostname daemon and its /etc/hosts block. Leaves
 # docker-mac-net-connect installed (remove it with: brew uninstall docker-mac-net-connect).
 set -euo pipefail
 
-BIN=/usr/local/bin/ldev-hosts
-PLIST=/Library/LaunchDaemons/com.ldev.hosts.plist
-LABEL=com.ldev.hosts
-BEGIN="# BEGIN LDEV CONTAINERS"
-END="# END LDEV CONTAINERS"
+BIN=/usr/local/bin/docker-local-hostname
+PLIST=/Library/LaunchDaemons/com.docker.local-hostname.plist
+LABEL=com.docker.local-hostname
+BEGIN="# BEGIN DOCKER-LOCAL-HOSTNAME"
+END="# END DOCKER-LOCAL-HOSTNAME"
 
 log() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 
-log "Stopping and removing ldev-hosts daemon…"
+log "Stopping and removing docker-local-hostname daemon…"
 sudo launchctl bootout "system/$LABEL" 2>/dev/null || true
-sudo rm -f "$PLIST" "$BIN" /var/log/ldev-hosts.log
+sudo rm -f "$PLIST" "$BIN" /var/log/docker-local-hostname.log
 
 log "Removing the managed block from /etc/hosts (atomically)…"
 tmp="$(sudo mktemp /etc/hosts.ldev.XXXXXX)"

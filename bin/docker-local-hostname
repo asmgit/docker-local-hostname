@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# ldev-hosts — keep a managed block in /etc/hosts in sync with running docker
-# containers whose hostname ends in the ldev domain (default ".ldev"), mapping
+# docker-local-hostname — keep a managed block in /etc/hosts in sync with running docker
+# containers whose hostname ends in the docker-local-hostname domain (default ".ldev"), mapping
 # each hostname to its container IP. Driven by docker events; updates on every
 # container start/stop and flushes the macOS DNS cache when the set changes so
 # changes are visible within ~1s.
@@ -8,16 +8,16 @@
 # Container IPs (172.x) are made reachable from the macOS host by
 # docker-mac-net-connect. This daemon only handles name -> IP resolution.
 #
-# Runs as a root launchd daemon. See com.ldev.hosts.plist.
+# Runs as a root launchd daemon. See com.docker.local-hostname.plist.
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin
 export DOCKER_HOST="${DOCKER_HOST:-unix:///var/run/docker.sock}"
 set -u
 
-DOMAIN="${LDEV_DOMAIN:-.ldev}"
+DOMAIN="${DOCKER_LOCAL_HOSTNAME_DOMAIN:-.ldev}"
 HOSTS=/etc/hosts
 SOCK="${DOCKER_HOST#unix://}"
-BEGIN="# BEGIN LDEV CONTAINERS"
-END="# END LDEV CONTAINERS"
+BEGIN="# BEGIN DOCKER-LOCAL-HOSTNAME"
+END="# END DOCKER-LOCAL-HOSTNAME"
 # url-encoded {"type":["container"],"event":["start","die","destroy"]}
 FILTER='%7B%22type%22%3A%5B%22container%22%5D%2C%22event%22%3A%5B%22start%22%2C%22die%22%2C%22destroy%22%5D%7D'
 

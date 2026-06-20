@@ -1,4 +1,4 @@
-# ldev — local `*.ldev` domains for multi-project Docker dev on macOS
+# docker-local-hostname — local `*.ldev` domains for multi-project Docker dev on macOS
 
 Run many Docker Compose projects at once and reach each one **by name** from your
 Mac — `http://project_1.ldev`, `db.project_1.ldev:5432`, `http://project_2.ldev`, …
@@ -23,7 +23,7 @@ can't be routed by name** — the MySQL/Postgres wire protocol carries no hostna
 (TLS/SNI only comes up *after* a plaintext greeting), so a proxy can't tell two
 databases apart on one `IP:port`. See [SPEC.md](SPEC.md) for the full analysis.
 
-`ldev` takes a different route: give **each container its own IP**, reachable
+`docker-local-hostname` takes a different route: give **each container its own IP**, reachable
 from the Mac, and resolve `*.ldev` names to those IPs. No host ports, no reverse
 proxy, no per-project port bookkeeping. Routing is by **name → IP**, so ports are
 free to repeat.
@@ -32,7 +32,7 @@ free to repeat.
 
 ```
  Mac:  curl http://project_1.ldev
-   |  /etc/hosts:  project_1.ldev -> 172.20.0.3   (kept in sync by the ldev-hosts daemon)
+   |  /etc/hosts:  project_1.ldev -> 172.20.0.3   (kept in sync by the docker-local-hostname daemon)
    v
    docker-mac-net-connect routes 172.x from the Mac into the Docker VM
    v
@@ -44,7 +44,7 @@ Two small pieces, both installed by `install.sh`:
 | Component | Role |
 |---|---|
 | [`docker-mac-net-connect`](https://github.com/chipmk/docker-mac-net-connect) | A WireGuard tunnel so the Mac can reach container IPs (`172.x`). Docker Desktop normally hides them. |
-| `ldev-hosts` (this repo) | A tiny launchd daemon that watches Docker events and keeps a managed block in `/etc/hosts` mapping every `*.ldev` container hostname to its IP, flushing the DNS cache on change. |
+| `docker-local-hostname` (this repo) | A tiny launchd daemon that watches Docker events and keeps a managed block in `/etc/hosts` mapping every `*.ldev` container hostname to its IP, flushing the DNS cache on change. |
 
 There is **no DNS server** and **no `/etc/resolver`**: `/etc/hosts` is consulted
 before DNS and isn't subject to negative-cache stalls, so a container that comes
@@ -58,13 +58,13 @@ back up resolves again in about a second.
 ## Install
 
 ```bash
-git clone https://github.com/asmgit/ldev.git
-cd ldev
+git clone https://github.com/asmgit/docker-local-hostname.git
+cd docker-local-hostname
 ./install.sh
 ```
 
 `install.sh` is idempotent. It installs and starts `docker-mac-net-connect`,
-installs the `ldev-hosts` daemon, and asks for `sudo` (the daemon edits
+installs the `docker-local-hostname` daemon, and asks for `sudo` (the daemon edits
 `/etc/hosts` and runs as root, which is required to flush the DNS cache).
 
 ## Use it
@@ -107,8 +107,8 @@ keep the same internal ports, publish nothing. Nothing else to configure.
 ## Verify
 
 ```bash
-grep -A6 'BEGIN LDEV' /etc/hosts     # the managed block
-cat /var/log/ldev-hosts.log          # daemon activity
+grep -A6 'BEGIN DOCKER-LOCAL-HOSTNAME' /etc/hosts     # the managed block
+cat /var/log/docker-local-hostname.log          # daemon activity
 ```
 
 ## Configuration
@@ -116,20 +116,20 @@ cat /var/log/ldev-hosts.log          # daemon activity
 The domain defaults to `.ldev`. To use another (e.g. `.test`):
 
 ```bash
-LDEV_DOMAIN=.test ./install.sh
+DOCKER_LOCAL_HOSTNAME_DOMAIN=.test ./install.sh
 ```
 
 ## Troubleshooting
 
 - **A name doesn't resolve / `curl: could not resolve host`.** Check the block
-  in `/etc/hosts` and `/var/log/ldev-hosts.log`. Make sure the container's
+  in `/etc/hosts` and `/var/log/docker-local-hostname.log`. Make sure the container's
   `hostname` actually ends in your domain.
 - **Name resolves but the connection hangs/refuses.** That's the tunnel, not
   DNS. Confirm `docker-mac-net-connect` is running:
   `sudo brew services list | grep docker-mac-net-connect`, and that
   `curl http://<container-ip>` works.
 - **Nothing updates after `up`.** Restart the daemon:
-  `sudo launchctl kickstart -k system/com.ldev.hosts`.
+  `sudo launchctl kickstart -k system/com.docker.local-hostname`.
 
 ## Uninstall
 
@@ -141,7 +141,7 @@ brew uninstall docker-mac-net-connect
 
 ## A more integrated option (single binary)
 
-`ldev-hosts` is intentionally a small shell daemon layered on top of the
+`docker-local-hostname` is intentionally a small shell daemon layered on top of the
 upstream tunnel. The same logic can be folded **into** `docker-mac-net-connect`
 so one binary does both the tunnel and the `/etc/hosts` sync — see
 [`fork/`](fork/) for that variant and the rationale.
