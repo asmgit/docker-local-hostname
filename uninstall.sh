@@ -6,8 +6,8 @@ set -euo pipefail
 BIN=/usr/local/bin/docker-local-hostname
 PLIST=/Library/LaunchDaemons/com.docker.local-hostname.plist
 LABEL=com.docker.local-hostname
-BEGIN="# BEGIN DOCKER-LOCAL-HOSTNAME"
-END="# END DOCKER-LOCAL-HOSTNAME"
+BEGIN="# BEGIN DOCKER_LOCAL_HOSTNAME"
+END="# END DOCKER_LOCAL_HOSTNAME"
 
 log() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 

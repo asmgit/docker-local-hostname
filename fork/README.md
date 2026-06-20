@@ -24,7 +24,7 @@ a Docker client, and already watches Docker events):
 `hostsmanager` watches container `start`/`die`/`destroy` events, lists running
 containers, takes each one whose `Config.Hostname` ends in `DOCKER_LOCAL_HOSTNAME_DOMAIN`
 (default `.ldev`), writes `IP hostname` lines into the
-`# BEGIN/END DOCKER-LOCAL-HOSTNAME` block in `/etc/hosts`, and flushes the macOS
+`# BEGIN/END DOCKER_LOCAL_HOSTNAME` block in `/etc/hosts`, and flushes the macOS
 DNS cache when the set changes.
 
 ## Build & run

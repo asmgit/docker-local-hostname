@@ -1,22 +1,22 @@
 # docker-local-hostname — reach multi-project Docker by stable local hostnames on macOS
 
 Run many Docker Compose projects at once and reach each one **by name** from your
-Mac — `http://project_1.ldev`, `db.project_1.ldev:5432`, `http://project_2.ldev`, …
+Mac — `http://project_admin.ldev`, `db.project_admin.ldev:5432`, `http://project_mono.ldev`, …
 — with **no published host ports**. Because nothing is bound to the host, every
 project can use the **same internal ports** (`80`, `5432`, `3306`); they never
 collide. Install once, then it just works.
 
 ```
-curl http://project_1.ldev      ->  project_1's web container
-psql -h db.project_1.ldev       ->  project_1's postgres
-curl http://project_2.ldev      ->  project_2's web container   (also on :80, no conflict)
-psql -h db.project_2.ldev       ->  project_2's postgres        (also on :5432, no conflict)
+curl http://project_admin.ldev      ->  project_admin's web container
+psql -h db.project_admin.ldev       ->  project_admin's postgres
+curl http://project_mono.ldev      ->  project_mono's web container   (also on :80, no conflict)
+psql -h db.project_mono.ldev       ->  project_mono's postgres        (also on :5432, no conflict)
 ```
 
 ## The problem
 
 Running several Compose projects locally, the usual pain is **host ports**.
-If `project_1` publishes `5432:5432`, `project_2` can't — you start juggling
+If `project_admin` publishes `5432:5432`, `project_mono` can't — you start juggling
 `5433`, `5434`, remembering which port is which, and rewriting `.env` files.
 A reverse proxy fixes HTTP (it routes by the `Host` header), but **databases
 can't be routed by name** — the MySQL/Postgres wire protocol carries no hostname
@@ -31,12 +31,12 @@ free to repeat. The domain is configurable (examples below use `.ldev`).
 ## How it works
 
 ```
- Mac:  curl http://project_1.ldev
-   |  /etc/hosts:  project_1.ldev -> 172.20.0.3   (kept in sync by the docker-local-hostname daemon)
+ Mac:  curl http://project_admin.ldev
+   |  /etc/hosts:  project_admin.ldev -> 172.20.0.3   (kept in sync by the docker-local-hostname daemon)
    v
    docker-mac-net-connect routes 172.x from the Mac into the Docker VM
    v
-   project_1's web container  --(by service name 'db')-->  project_1's db container
+   project_admin's web container  --(by service name 'db')-->  project_admin's db container
 ```
 
 Two small pieces, both installed by `install.sh`:
@@ -72,28 +72,28 @@ installs the `docker-local-hostname` daemon, and asks for `sudo` (the daemon edi
 Give each service a `hostname` ending in `.ldev` and **publish nothing**:
 
 ```yaml
-# project_1/compose.yaml
-name: project_1
+# project_admin/compose.yaml
+name: project_admin
 services:
   web:
     image: traefik/whoami
-    hostname: project_1.ldev
+    hostname: project_admin.ldev
   db:
     image: postgres:18-alpine
-    hostname: db.project_1.ldev
+    hostname: db.project_admin.ldev
     environment: { POSTGRES_PASSWORD: secret }
     volumes: [ "dbdata:/var/lib/postgresql" ]
 volumes: { dbdata: {} }
 ```
 
 ```bash
-docker compose -f examples/project_1/compose.yaml up -d
-docker compose -f examples/project_2/compose.yaml up -d
+docker compose -f examples/project_admin/compose.yaml up -d
+docker compose -f examples/project_mono/compose.yaml up -d
 
-curl http://project_1.ldev          # -> project_1 web
-curl http://project_2.ldev          # -> project_2 web   (also :80, no conflict)
-psql -h db.project_1.ldev -U postgres
-psql -h db.project_2.ldev -U postgres
+curl http://project_admin.ldev          # -> project_admin web
+curl http://project_mono.ldev          # -> project_mono web   (also :80, no conflict)
+psql -h db.project_admin.ldev -U postgres
+psql -h db.project_mono.ldev -U postgres
 ```
 
 That's it — the daemon notices the containers and updates `/etc/hosts`. No IP
@@ -101,13 +101,13 @@ is ever written into a project file; only the **name** lives in `compose.yaml`.
 
 ### Add another project
 
-Copy a project, change the `hostname`s (`project_3.ldev`, `db.project_3.ldev`),
+Copy a project, change the `hostname`s (`project_shop.ldev`, `db.project_shop.ldev`),
 keep the same internal ports, publish nothing. Nothing else to configure.
 
 ## Verify
 
 ```bash
-grep -A6 'BEGIN DOCKER-LOCAL-HOSTNAME' /etc/hosts     # the managed block
+grep -A6 'BEGIN DOCKER_LOCAL_HOSTNAME' /etc/hosts     # the managed block
 cat /var/log/docker-local-hostname.log          # daemon activity
 ```
 

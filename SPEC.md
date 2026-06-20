@@ -10,7 +10,7 @@ Local development with **multiple Docker Compose projects running at the same
 time** on macOS. Requirements:
 
 1. **Reach each project from the Mac by a stable name**, for both HTTP and
-   databases — e.g. `http://project_1.ldev`, `db.project_1.ldev:5432`.
+   databases — e.g. `http://project_admin.ldev`, `db.project_admin.ldev:5432`.
 2. **No per-project host-port bookkeeping.** Projects should be free to use the
    **same internal ports** (`80`, `5432`, `3306`) without colliding.
 3. **No hard-coded IP addresses** in project files — a project declares a
@@ -36,11 +36,11 @@ everything:
 ## 3. Why the obvious approaches don't satisfy the spec
 
 ### 3.1 Different host ports
-`project_1` db on `5432`, `project_2` db on `5433`, … Works and is simple, but
+`project_admin` db on `5432`, `project_mono` db on `5433`, … Works and is simple, but
 violates requirement 2 (same ports) and means a growing port map to remember.
 
 ### 3.2 Reverse proxy (Traefik/nginx) routing by name
-A proxy routes **HTTP** by the `Host` header — perfect for `http://project_1.ldev`.
+A proxy routes **HTTP** by the `Host` header — perfect for `http://project_admin.ldev`.
 But it **cannot route databases by name**. The MySQL/Postgres/MariaDB wire
 protocol begins with a **plaintext server greeting**; TLS (and therefore SNI, the
 only place a hostname appears in a TCP stream) is negotiated *afterwards*. A
@@ -110,8 +110,8 @@ Measured recovery after `down`/`up`: **~1 second**, with no manual flush.
 ### Resolution path
 
 ```
-project_1.ldev
-  -> /etc/hosts        (docker-local-hostname wrote: 172.20.0.3 project_1.ldev)
+project_admin.ldev
+  -> /etc/hosts        (docker-local-hostname wrote: 172.20.0.3 project_admin.ldev)
   -> 172.20.0.3        (route via docker-mac-net-connect's utun)
   -> container :80 / :5432 / :3306
 ```
@@ -128,7 +128,7 @@ project_1.ldev
 
 - **`/etc/hosts` vs DNS.** `/etc/hosts` is authoritative, immediate, and immune
   to negative caching. The cost is that it's a global system file — `docker-local-hostname`
-  only ever touches its own `# BEGIN/END DOCKER-LOCAL-HOSTNAME` block and leaves all
+  only ever touches its own `# BEGIN/END DOCKER_LOCAL_HOSTNAME` block and leaves all
   other lines untouched.
 - **Flush on change.** macOS's `mDNSResponder` does not always re-read
   `/etc/hosts` immediately; a flush guarantees ~1s pickup. It only fires when the

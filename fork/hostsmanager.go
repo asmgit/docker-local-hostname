@@ -28,8 +28,8 @@ import (
 
 const (
 	hostsPath   = "/etc/hosts"
-	beginMarker = "# BEGIN DOCKER-LOCAL-HOSTNAME"
-	endMarker   = "# END DOCKER-LOCAL-HOSTNAME"
+	beginMarker = "# BEGIN DOCKER_LOCAL_HOSTNAME"
+	endMarker   = "# END DOCKER_LOCAL_HOSTNAME"
 )
 
 func domain() string {

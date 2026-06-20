@@ -47,9 +47,9 @@ log "Done."
 cat <<EOF
 
 Verify:
-  docker compose -f "$SRC_DIR/examples/project_1/compose.yaml" up -d
-  curl http://project_1${DOMAIN}
-  grep -A4 'BEGIN DOCKER-LOCAL-HOSTNAME' /etc/hosts
+  docker compose -f "$SRC_DIR/examples/project_admin/compose.yaml" up -d
+  curl http://project_admin${DOMAIN}
+  grep -A4 'BEGIN DOCKER_LOCAL_HOSTNAME' /etc/hosts
 
 A project just needs a 'hostname: <name>${DOMAIN}' on its service and no host ports.
 Daemon log: /var/log/docker-local-hostname.log

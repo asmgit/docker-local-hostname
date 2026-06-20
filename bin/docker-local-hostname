@@ -16,8 +16,8 @@ set -u
 DOMAIN="${DOCKER_LOCAL_HOSTNAME_DOMAIN:-.ldev}"
 HOSTS=/etc/hosts
 SOCK="${DOCKER_HOST#unix://}"
-BEGIN="# BEGIN DOCKER-LOCAL-HOSTNAME"
-END="# END DOCKER-LOCAL-HOSTNAME"
+BEGIN="# BEGIN DOCKER_LOCAL_HOSTNAME"
+END="# END DOCKER_LOCAL_HOSTNAME"
 # url-encoded {"type":["container"],"event":["start","die","destroy"]}
 FILTER='%7B%22type%22%3A%5B%22container%22%5D%2C%22event%22%3A%5B%22start%22%2C%22die%22%2C%22destroy%22%5D%7D'
 

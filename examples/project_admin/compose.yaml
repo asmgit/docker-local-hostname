@@ -1,15 +1,15 @@
-name: project_1
+name: project_admin
 
-# Reached from the host as http://project_1.ldev and db.project_1.ldev:5432
+# Reached from the host as http://project_admin.ldev and db.project_admin.ldev:5432
 # Note: NO host port mappings. The name resolves to the container IP directly.
 services:
   web:
     image: traefik/whoami
-    hostname: project_1.ldev
+    hostname: project_admin.ldev
 
   db:
     image: postgres:18-alpine
-    hostname: db.project_1.ldev
+    hostname: db.project_admin.ldev
     environment:
       POSTGRES_PASSWORD: secret
     volumes:
