@@ -1,4 +1,4 @@
-# docker-local-hostname — local `*.ldev` domains for multi-project Docker dev on macOS
+# docker-local-hostname — reach multi-project Docker by stable local hostnames on macOS
 
 Run many Docker Compose projects at once and reach each one **by name** from your
 Mac — `http://project_1.ldev`, `db.project_1.ldev:5432`, `http://project_2.ldev`, …
@@ -24,9 +24,9 @@ can't be routed by name** — the MySQL/Postgres wire protocol carries no hostna
 databases apart on one `IP:port`. See [SPEC.md](SPEC.md) for the full analysis.
 
 `docker-local-hostname` takes a different route: give **each container its own IP**, reachable
-from the Mac, and resolve `*.ldev` names to those IPs. No host ports, no reverse
+from the Mac, and resolve each project's hostname to its IP. No host ports, no reverse
 proxy, no per-project port bookkeeping. Routing is by **name → IP**, so ports are
-free to repeat.
+free to repeat. The domain is configurable (examples below use `.ldev`).
 
 ## How it works
 
