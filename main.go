@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -148,12 +149,14 @@ func main() {
 		os.Exit(ExitSetupFailed)
 	}
 
+	keepalive := 25 * time.Second
 	peer := wgtypes.PeerConfig{
 		PublicKey: vmPrivateKey.PublicKey(),
 		AllowedIPs: []net.IPNet{
 			*wildcardIpNet,
 			*vmIpNet,
 		},
+		PersistentKeepaliveInterval: &keepalive,
 	}
 
 	// Ephemeral port - the actual port is read back and passed to the setup container.
@@ -228,6 +231,13 @@ func main() {
 
 	ctx := context.Background()
 
+	var setupMu sync.Mutex
+	runSetup := func() error {
+		setupMu.Lock()
+		defer setupMu.Unlock()
+		return setupVm(ctx, cli, port, hostPeerIp, vmPeerIp, hostPrivateKey, vmPrivateKey)
+	}
+
 	// docker-local-hostname: keep /etc/hosts in sync with *.ldev containers (host-side name
 	// resolution; reachability is provided by the WireGuard tunnel above).
 	go hostsmanager.Run(ctx, cli)
@@ -236,7 +246,7 @@ func main() {
 		for {
 			logger.Verbosef("Setting up Wireguard on Docker Desktop VM\n")
 
-			err = setupVm(ctx, cli, port, hostPeerIp, vmPeerIp, hostPrivateKey, vmPrivateKey)
+			err = runSetup()
 			if err != nil {
 				logger.Errorf("Failed to setup VM: %v", err)
 				time.Sleep(5 * time.Second)
@@ -297,6 +307,45 @@ func main() {
 			}
 
 			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	go func() {
+		const (
+			interval       = 15 * time.Second
+			startupGrace   = 30 * time.Second
+			staleThreshold = 180 * time.Second
+			maxSetupFails  = 3
+		)
+		time.Sleep(startupGrace)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		setupFails := 0
+		for range ticker.C {
+			if n := networkManager.EnsureRoutes(interfaceName); n > 0 {
+				logger.Verbosef("reconcile: re-added %d missing route(s)\n", n)
+			}
+			dev, devErr := c.Device(interfaceName)
+			var lastHandshake time.Time
+			if devErr == nil && len(dev.Peers) > 0 {
+				lastHandshake = dev.Peers[0].LastHandshakeTime
+			}
+			if !networkmanager.TunnelStale(devErr != nil, lastHandshake, time.Now(), staleThreshold) {
+				setupFails = 0
+				continue
+			}
+			logger.Errorf("reconcile: tunnel unhealthy, re-running VM setup")
+			if err := runSetup(); err != nil {
+				setupFails++
+				logger.Errorf("reconcile: VM setup failed (%d/%d): %v", setupFails, maxSetupFails, err)
+				if setupFails >= maxSetupFails {
+					logger.Errorf("reconcile: repeated setup failures, exiting for clean restart")
+					os.Exit(ExitSetupFailed)
+				}
+				continue
+			}
+			setupFails = 0
+			networkManager.EnsureRoutes(interfaceName)
 		}
 	}()
 
