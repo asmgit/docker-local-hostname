@@ -377,7 +377,7 @@ func setupVm(
 	hostPrivateKey wgtypes.Key,
 	vmPrivateKey wgtypes.Key,
 ) error {
-	imageName := fmt.Sprintf("%s:%s", version.SetupImage, version.Version)
+	imageName := version.SetupImage
 
 	_, err := dockerCli.ImageInspect(ctx, imageName)
 	if err != nil {
